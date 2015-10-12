@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Tweety</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" >
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="format-detection" content="telephone=no">
+    <style type="text/css">
+        body{
+            margin:0;
+            padding:0;
+        }
+        #game{
+            width:100%;
+            max-width: 640px;
+        }
+
+    </style>
+</head>
+<body>
+    <canvas id="game"></canvas>
+</body>
+    <script src="js/easeljs-0.8.1.min.js"></script>
+    <script src="js/tweenjs-0.6.1.min.js"></script>
+    <script>
+
+        document.body.addEventListener("touchmove",function(e){ //防止页面抖动
+            e.preventDefault();
+        });
+
+
+
+
+            var BLOCK_WIDTH = 80,
+                BLOCK_HEIGHT = 80,
+                BLOCK_GAP    = 20
+                BLOCK_RADIUS = 5,
+                BOARD_WIDTH = 7,
+                BOARD_HEIGHT = 8,
+                WIDTH  = BOARD_WIDTH * (BLOCK_WIDTH + BLOCK_GAP) + BLOCK_GAP ,
+                HEIGHT = BOARD_HEIGHT * (BLOCK_HEIGHT + BLOCK_GAP) + BLOCK_GAP,
+
+                COLOR = [{
+                    bg :  "#807e4b",
+                    color : "#464800",
+                },{
+                    bg : "#801213",
+                    color: "#fff"
+                },{
+                    bg : "#007958",
+                    color: "#fff",
+                },{
+                    bg : "#174580",
+                    color: "#fff"
+                },{
+                    bg : "#6f527e",
+                    color:"#fff"
+                },{
+                    bg: "#1c7300",
+                    color:"#fff"
+                },{
+                    bg : "#806a5f",
+                    color:"#fff"
+                },{
+                    bg : "#500079",
+                    color:"#fff"
+                },{
+                    bg : "#7f5a01",
+                    color:"#fff"
+                },{
+                    bg : "#626061",
+                    color:"#fff"
+                },{
+                    bg : "#677d01",
+                    color : "#343f07"
+                },{
+                    bg : "#827e00",
+                    color: "#3e3f00"
+                },{
+                    bg : "#7d0f3e",
+                    color : "#fff"
+                },{
+                    bg : "#006a77",
+                    color : "#fff"
+                },{
+                    bg : "#404241",
+                    color : "#fff"
+                },{
+                    bg : "#121280",
+                    color : "#fff"
+                },{
+                    bg : "#7a2080",
+                    color : "#fff"
+                },{
+                    bg : "#321542",
+                    color : "#fff"
+                },{
+                    bg : "#817253",
+                    color : "#fff"
+                },{
+                    bg : "#843d29",
+                    color : "#fff"
+                }]
+            var _stage,
+                _gameLevel = 3,
+                _gameInitLine = 2,
+                twees = new Set(),
+                _blockData = [];
+
+            function _init(){
+
+                game.width = WIDTH;
+                game.height = HEIGHT;
+
+                _stage = new createjs.Stage("game");
+
+                for(var i = 0 ; i < _gameInitLine ; i ++ ){
+
+                    _blockData[i] = [];
+
+                    for(var j = 0 ; j < BOARD_WIDTH ; j ++){
+
+                        var value = Math.ceil(Math.random() * _gameLevel) ;
+
+                        _blockData[i][j] = _createBlock({
+                            x : BLOCK_GAP + j * (BLOCK_GAP + BLOCK_WIDTH) , 
+                            y : HEIGHT - ((i + 1) * (BLOCK_HEIGHT + BLOCK_GAP )) ,
+                            value : value 
+                        });  
+
+                    }
+
+                }
+
+                createjs.Touch.enable(_stage);
+
+                createjs.Ticker.setFPS(60);
+
+                createjs.Ticker.addEventListener("tick", function(e){
+
+                    twees.forEach(function(func) {
+                      func();
+                    });
+
+                    _stage.update();
+
+                });
+
+                createjs.Ticker.addEventListener("tick", _stage);
+
+
+            }
+
+            var _draging = false,
+                startX,
+                startY,
+                movingBlock = 0;
+
+
+            function _formatPoint(x,y){
+
+                return {
+                    x : Math.floor( (x - BLOCK_GAP) / ( BLOCK_GAP + BLOCK_WIDTH) ) *  ( BLOCK_GAP + BLOCK_WIDTH) + BLOCK_GAP,
+                    y : Math.floor( (y - BLOCK_GAP) / ( BLOCK_GAP + BLOCK_HEIGHT) ) * ( BLOCK_GAP + BLOCK_HEIGHT) + BLOCK_GAP
+                }
+              
+            }   
+
+            function _check(){
+
+                var point = _formatPoint(movingBlock.x,movingBlock.y);
+
+                movingBlock.x = point.x;
+
+                _falldown( movingBlock );
+                /*
+                createjs.Tween.get(movingBlock, {
+                    override:true
+                }).to({ y : HEIGHT - BLOCK_GAP - BLOCK_HEIGHT},500,createjs.Ease.cubicIn ).addEventListener("change", function(event){
+
+                    console.log(event);
+
+                    var nextX = movingBlock.x + BLOCK_WIDTH + BLOCK_GAP,
+                        nextY = movingBlock.y + BLOCK_HEIGHT + BLOCK_GAP;
+
+                     if( _stage.getObjectsUnderPoint(nextX,nextY).length > 1 ){ //检查到下个位置有block
+
+                        var formatPoint = _formatPoint(movingBlock.x,movingBlock.y);
+                        movingBlock.x = formatPoint.x;
+                        movingBlock.y = formatPoint.y;
+                        createjs.Tween.removeTweens(movingBlock);
+                     }
+
+                });
+                */
+            }
+
+            function _falldown( falldownBlock){
+
+                var g = 9.80665;
+                var startTime = new Date().getTime(),
+                    startX = falldownBlock.x,
+                    startY = falldownBlock.y,
+                    id = "falldown" + startTime;
+
+                twees.add(action);
+
+                function action(){
+
+                    var newX =  startX ,
+                        newY = startY + Math.pow((new Date().getTime() - startTime) / 100,2) * g ;
+
+                    if( newY > HEIGHT -BLOCK_GAP || newX > WIDTH -BLOCK_GAP || _stage.getObjectsUnderPoint(newX + BLOCK_RADIUS ,newY + BLOCK_GAP *2 ).length > 1 ){
+
+                        var point = _formatPoint(falldownBlock.x,falldownBlock.y);
+                        falldownBlock.x = point.x;
+                        falldownBlock.y = point.y;
+                        twees.delete(action);
+
+                    }else{
+
+                        falldownBlock.y = newY;
+
+                    }
+
+                };
+
+            }
+
+            function _touchstart(e){
+
+
+                 _draging = true;
+                movingBlock = e.currentTarget;
+                startX = e.stageX;
+                startY = e.stageY;
+
+                _stage.setChildIndex(movingBlock,1);
+            }
+
+            function _touchmove(e){
+                
+                if(_draging){
+
+                   
+
+                    movingBlock.x += ( e.stageX - startX);
+                    movingBlock.y += ( e.stageY - startY);
+                    startX = e.stageX;
+                    startY = e.stageY;
+
+                }
+      
+            }
+
+            function _touchend(e){
+
+                _draging = false;
+
+                _stage.setChildIndex(movingBlock,0);
+
+                _check();
+
+            }
+            function _createBlock(options){
+
+                var container = new createjs.Container();
+                container.x = options.x;
+                container.y = options.y;
+                container.value = options.value;
+                container.id = "block" + new Date().getTime();
+
+                var shape = new createjs.Shape();
+                shape.graphics.f(COLOR[options.value].bg).rr( 0 , 0 ,  BLOCK_WIDTH ,BLOCK_HEIGHT, BLOCK_RADIUS).ef();
+
+                var text = new createjs.Text(options.value, "28px Arial", COLOR[options.value].color);
+                var b = text.getBounds();
+                text.x = BLOCK_WIDTH/2 - b.width/2; 
+                text.y = BLOCK_HEIGHT/2 - b.height/2;
+
+                var block = {
+                    x : options.x,
+                    y : options.y,
+                    value  : options.value,
+                    g :  container,
+                }  
+
+                container.addChild(shape);
+                container.addChild(text);
+
+                container.addEventListener("mousedown", _touchstart);
+                container.addEventListener("pressmove", _touchmove);
+                container.addEventListener("pressup",_touchend);
+
+                _stage.setChildIndex(container,0);
+                _stage.addChild(container);
+
+                return block;
+
+            }
+
+            _init();
+
+ 
+  
+    </script>
+</html>
